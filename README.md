@@ -1,4 +1,6 @@
 # ghst
+> **Important:** ghst does **not** support many express features!
+
 A light-weight http framework built for Deno.
 
 Example of usage:
