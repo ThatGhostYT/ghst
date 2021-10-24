@@ -3,6 +3,8 @@
 
 A light-weight http framework built for Deno.
 
+If pared up with [Deno Deploy](https://deno.com/deploy/) you can make a fully functional site that other people can see.
+
 Example of usage:
 ```js
 import {App} from "https://deno.land/x/ghst@ghst/ghst.js" // Documentation can be found at https://doc.deno.land/https/deno.land/x/ghst@ghst/ghst.js
