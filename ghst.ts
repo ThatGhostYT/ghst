@@ -1,154 +1,93 @@
-/**
- * @constructor
- */
-class HTTPResponse{
-    private reqs: any;
-    public status: number;
-    private webText: string;
-    private header: any;
+import {HTTPRequest} from "./req.ts";
+import {HTTPResponse} from "./res.ts";
 
-    constructor(reqs: any){
-        this.reqs = reqs;
-        this.status = 200;
-        this.webText = "";
-        this.header = {};
-    }
-
-    /**
-     * @param {string} text
-     */
-    send(text: string){
-        this.webText += text;
-        return this;
-    }
-
-    /**
-     * @param {number} code
-     */
-    setStatus(code: number){
-        this.status = code;
-        return this;
-    }
-
-    /**
-     * @param {string} name
-     * @param {string} value
-     */
-    setHeader(name: string,value: string){
-        this.header[name] = value;
-        return this;
-    }
-
-    _send(){
-        this.reqs.respondWith(
-            new Response(this.webText, {
-                status: this.status,
-                headers: this.header
-            })
-        );
-    }
+interface MiddlewareOptions{
+    middleware: Function[]
 }
 
-/**
- * @constructor
- */
-class HTTPRequest{
-    private reqs: any;
-    public headers: any;
-    public path: string;
-    public url: string;
-
-    /**
-     * @param {string} path
-     * @param {string} url
-     */
-    constructor(reqs: any,path: string,url: string){
-        this.reqs = reqs;
-        this.headers = this.reqs.request.headers;
-        this.path = path;
-        this.url = url;
-    }
+interface PathOptions{
+    method: string;
+    callback: Function;
 }
 
-class App{
-    static HTML(req: HTTPRequest,res: HTTPResponse){
-        res.setHeader("content-type","text/html");
+class GhstApplication{
+    public requests: {[key: string]: PathOptions}
+    public middleware: Function[]
+
+    constructor(options: MiddlewareOptions){
+        this.requests = {}
+        this.middleware = options.middleware;
     }
 
-    public middleware: Function[];
-    private requests: any;
-
-    /**
-     * @typedef {{middleware: Function[]}} MiddlewareOptions
-     * @param {MiddlewareOptions} options
-     */
-    constructor(options: any){
-        this.middleware = options.middleware || [];
-        this.requests = {};
-    }
-
-    /**
-     * @typedef {{path: string, req_type: string}} RequestOptions
-     * @param {RequestOptions} options
-     * @param {function} callback
-     */
-    makeRequest(options: any,callback: Function){
-        this.requests[options.path] = {
-            req_type: options.req_type,
+    onRequest(path: string,method: string,callback: Function){
+        this.requests[path] = {
+            method: "GET",
             callback: callback
         }
     }
 
-    /**
-     * @param {number} port
-     * @param {function} callback
-     */
-    async start(port: number,callback: Function){
+    async start(port: number,callback?: Function){
         const server = Deno.listen({
             port: port
         });
 
-        console.log(`http://localhost:${port}/`);
-
-        // deno-lint-ignore no-this-alias
-        const self = this;
+        // deno-lint-ignore no-this-aliase
+        const self: this = this;
 
         if(callback instanceof Function){
-            callback(port);
+            callback();
         }
 
         for await(const connection of server){
-            serverHTTP(connection);
+            serveHTTP(connection);
         }
 
-        async function serverHTTP(connection: any) {
-            const httpConn = Deno.serveHttp(connection);
+        async function serveHTTP(connection: any){
+            const HTTPConnection = Deno.serveHttp(connection);
 
-            for await(const reqEvent of httpConn){
-                let path = reqEvent.request.url.split("/").slice(3).join("/");
-				path = "/" + path;
+            for await(const reqs of HTTPConnection){
+                let path = reqs.request.url.split("/").slice(3).join("/");
+                path = "/" + path;
 
-                if(self.requests[path] && reqEvent.request.method == self.requests[path].req_type){
-                    const req = new HTTPRequest(reqEvent,path,reqEvent.request.url);
-                    const res = new HTTPResponse(reqEvent);
-    
+                if(self.requests[path] && reqs.request.method === self.requests[path].method){
+                    const req = new HTTPRequest(reqs,path,reqs.request.url);
+                    const res = new HTTPResponse(reqs);
+
                     for(const middleware of self.middleware){
                         middleware(req,res);
                     }
-    
+
                     self.requests[path].callback(req,res);
-    
+
                     res._send();
                 } else{
-                    reqEvent.respondWith(
-                        new Response(`CANNOT GET ${path}`, {
-                            status: 404
-                        })
-                    );
+                    if(self.requests["/*"] && self.requests["/*"].method === "GET"){
+                        const req = new HTTPRequest(reqs,path,reqs.request.url);
+                        const res = new HTTPResponse(reqs);
+
+                        res.setStatus(404);
+
+                        for(const middleware of self.middleware){
+                            middleware(req,res);
+                        }
+
+                        self.requests["/*"].callback(req,res);
+
+                        res._send();
+                    } else{
+                        reqs.respondWith(
+                            new Response(`<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<title>404 Page not Found</title>\n<body>\n<h1>404</h1>\n<p>Request <b>${path}</b> not found!</p>\n</body>\n</html>`,{
+                                status: 404,
+                                headers: {
+                                    "Content-Type": "text/html"
+                                }
+                            })
+                        );
+                    }
                 }
             }
         }
     }
 }
 
-export {App};
+export {GhstApplication};
