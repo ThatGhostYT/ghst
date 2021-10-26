@@ -13,7 +13,7 @@ const app = new App({
   middleware: []
 });
 
-app.makeRequest("/","GET",(req,res) => {
+app.onRequest("/","GET",(req,res) => {
   res.send("Hello World!");
 });
 
