@@ -1,3 +1,5 @@
+import {HTTPResponse as resp} from "./res.ts";
+
 type Methods = "GET"
 	| "HEAD"
 	| "POST"
@@ -8,39 +10,34 @@ type Methods = "GET"
 	| "TRACE"
 	| "PATCH";
 
-interface Header{
-	name: string;
-	value: string;
-}
-
-interface Settings{
-	defaultHeaders: Header[] | [];
-	defaultContent: string;
-	middleware: (() => void)[] | [];
-	allows: {
-		params: boolean,
-		query: boolean
-	}
+interface MiddlewareOptions{
+	middleware: ((arg0: resp) => void)[];
 }
 
 interface Req{
-	path: string;
-	callback: () => void;
+	method: Methods;
+	callback: (arg0: resp) => void;
 }
 
 export class GhstApplication{
-	private _settings: Settings | string;
-	private _requests: Req[];
-	
-	constructor(settings?: Settings){
-		this._settings = settings
-		this._requests
+	private _requests: {[key: string]: Req};
+	private _middleware: ((arg0: resp) => void)[] | [];
+
+	constructor(options?: MiddlewareOptions){
+		this._requests = {};
+
+		if(options) this._middleware = options.middleware;
+		else this._middleware = [];
 	}
 
-	public onRequest(path: string,method: Methods,callback: () => void){
-		this._requests.push({
-			path,
+	public onRequest(path: string,method: Methods,callback: (arg0: resp) => void){
+		this._requests[path] = {
+			method,
 			callback
-		});
+		}
+	}
+
+	public listen(port: number,callback?: () => void){
+		
 	}
 }

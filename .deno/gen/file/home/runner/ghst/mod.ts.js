@@ -1,0 +1,3 @@
+import { GhstApplication } from "./ghst.ts";
+const ghst = new GhstApplication();
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiZmlsZTovLy9ob21lL3J1bm5lci9naHN0L21vZC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiQUFBQSxPQUFPLEVBQUMsZUFBZSxFQUFDLE1BQU0sV0FBVyxDQUFDO0FBRTFDLE1BQU0sSUFBSSxHQUFHLElBQUksZUFBZSxFQUFFLENBQUMifQ==

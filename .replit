@@ -1,2 +1,2 @@
 language = "deno"
-run = "deno run test.ts"
+run = "deno run mod.ts"
