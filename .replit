@@ -1,2 +1,0 @@
-language = "deno"
-run = "deno run mod.ts"

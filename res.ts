@@ -1,11 +1,9 @@
 export class HTTPResponse{
-    private _request: Deno.RequestEvent;
 	public body: string;
 	public status: number;
 	readonly headers: {[key: string]: string};
 
-	constructor(req: Deno.RequestEvent){
-		this._request = req;
+	constructor(){
 		this.body = "";
 		this.status = 200;
 		this.headers = {};
@@ -24,13 +22,5 @@ export class HTTPResponse{
 	public setStatus(code: number){
 		this.status = code;
 		return this;
-	}
-
-	public end(){
-		this._request.respondWith(
-			new Response(this.body,{
-				headers: this.headers
-			})
-		)
 	}
 }
