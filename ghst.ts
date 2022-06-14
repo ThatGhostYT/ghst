@@ -1,5 +1,5 @@
 import {HTTPRequest} from "./req.ts";
-import {HTTPResponse as Resp} from "./res.ts";
+import {HTTPResponse} from "./res.ts";
 
 type Methods = "GET"
 	| "HEAD"
@@ -12,18 +12,21 @@ type Methods = "GET"
 	| "PATCH";
 
 interface MiddlewareOptions{
-	middleware: ((arg0: HTTPRequest,arg1: Resp) => void)[];
+	middleware: ((arg0: HTTPRequest,arg1: HTTPResponse) => void)[];
 }
 
 interface Req{
 	method: Methods;
-	callback: (arg0: HTTPRequest,arg1: Resp) => void;
+	callback: (arg0: HTTPRequest,arg1: HTTPResponse) => void;
 }
 
 export class GhstApplication{
 	private _requests: {[key: string]: Req};
-	private _middleware: ((arg0: HTTPRequest,arg1: Resp) => void)[];
+	private _middleware: ((arg0: HTTPRequest,arg1: HTTPResponse) => void)[];
 
+	/**
+	 * @param options Used to add middleware to your ghst application.
+	 */
 	constructor(options?: MiddlewareOptions){
 		this._requests = {};
 
@@ -31,26 +34,96 @@ export class GhstApplication{
 		else this._middleware = [];
 	}
 
-	public onRequest(path: string,method: Methods,callback: (arg0: HTTPRequest,arg1: Resp) => void){
+	/**
+	 * Adds a request to your web app.
+	 * @param path The path of the request.
+	 * @param method The method of the request.
+	 * @param callback The callback for when the request is requested.
+	 */
+	public onRequest(path: string,method: Methods,callback: (arg0: HTTPRequest,arg1: HTTPResponse) => void){
 		this._requests[path] = {
 			method,
 			callback
 		}
 	}
 
+	/**
+	 * Middleware for setting a default content type header on all requests. Not recommended with use of sendFile().
+	 * @deprecated
+	 * @param contentType 
+	 */
 	public static ContentType(contentType: string){
-		return (_req: HTTPRequest,res: Resp) => {
+		return (_req: HTTPRequest,res: HTTPResponse) => {
 			res.setHeader("Content-Type",contentType);
 		}
 	}
 
+	/**
+	 * Content types for (some) file extentions.
+	 */
+	public static ContentTypeHeaders: {[key: string]: string} = {
+		".png": "image/png",
+		".gif": "image/gif",
+		".jpeg": "image/jpeg",
+		".tiff": "image/tiff",
+		".csv": "text/csv",
+		".xml": "text/xml",
+		".md": "text/markdown",
+		".html": "text/html",
+		".htm": "text/html",
+		".json": "application/json",
+		".map": "application/json",
+		".txt": "text/plain",
+		".ts": "text/typescript",
+		".tsx": "text/tsx",
+		".js": "application/javascript",
+		".jsx": "text/jsx",
+		".gz": "application/gzip",
+		".css": "text/css",
+		".wasm": "application/wasm",
+		".mjs": "application/javascript",
+		".svg": "image/svg+xml"
+	}
+
+	/**
+	 * 
+	 * @param path Directory you want to be static.
+	 */
+	public setStatic(path: string){
+		function addPaths(a: string,b: string){
+			return a.endsWith("/") ? a + b : `${a}/${b}`;
+		}
+
+		function walkDir(dir: string){
+			const entries = [];
+			for(const entry of Deno.readDirSync(dir)){
+				if(entry.isFile){
+					entries.push(addPaths(dir,entry.name));
+				} else if(entry.isDirectory){
+					entries.concat(walkDir(addPaths(dir,entry.name)));
+				}
+			}
+			return entries;
+		}
+
+		const entries = walkDir(path);
+
+		for(const entry of entries){
+			this.onRequest(entry,"GET",(_req,res) => {
+				res.sendFile(entry);
+			});
+		}
+	}
+
+	/**
+	 * Starts listening for requests.
+	 * @param port Port to host your web app on.
+	 * @param callback Optional callback for when your web app starts listening for requests.
+	 */
 	public async listen(port: number,callback?: () => void){
 		const server = Deno.listen({
 			port
 		});
-
-		// deno-lint-ignore no-this-alias
-		const self = this;
 
 		if(callback) callback();
 
@@ -61,17 +134,19 @@ export class GhstApplication{
 				let path = requestEvent.request.url.split("/").slice(3).join("/");
 
 				path = "/" + path;
-				path = path.split("?")[0];
+				
+				const query = path.split("?");
+				path = query[0];
 
-				if(self._requests[path] && self._requests[path].method === requestEvent.request.method){
-					const req = new HTTPRequest(requestEvent,path);
-					const res = new Resp();
+				if(this._requests[path] && this._requests[path].method === requestEvent.request.method){
+					const req = new HTTPRequest(requestEvent,path,"?" + (query[1] || ""))
+					const res = new HTTPResponse();
 
-					for(const middleware of self._middleware){
+					for(const middleware of this._middleware){
 						middleware(req,res);
 					}
 
-					self._requests[path].callback(req,res);
+					this._requests[path].callback(req,res);
 
 					requestEvent.respondWith(
 						new Response(res.body,{
@@ -81,7 +156,9 @@ export class GhstApplication{
 					);
 				} else{
 					requestEvent.respondWith(
-						new Response(`Cannot ${requestEvent.request.method} ${path}`)
+						new Response(`Cannot ${requestEvent.request.method} ${path}`,{
+							status: 404
+						})
 					);
 				}
 			}
