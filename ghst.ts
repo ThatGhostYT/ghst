@@ -86,7 +86,7 @@ export class GhstApplication{
 	}
 
 	/**
-	 * 
+	 * Sets the static directory to avoid content type errors.
 	 * @param path Directory you want to be static.
 	 */
 	public setStatic(path: string){
