@@ -23,15 +23,22 @@ interface Req{
 export class GhstApplication{
 	private _requests: {[key: string]: Req};
 	private _middleware: ((arg0: HTTPRequest,arg1: HTTPResponse) => void)[];
+	private _on404: (arg0: HTTPRequest,arg1: HTTPResponse) => void;
 
 	/**
 	 * @param options Used to add middleware to your ghst application.
+	 * @param on404 A request callback for when a request tries to access content that does not exist on your web app. Any response status code will be replaced with 404.
 	 */
-	constructor(options?: MiddlewareOptions){
+	constructor(options?: MiddlewareOptions,on404?: (arg0: HTTPRequest,arg1: HTTPResponse) => void){
 		this._requests = {};
 
 		if(options) this._middleware = options.middleware;
 		else this._middleware = [];
+
+		if(on404) this._on404 = on404;
+		else this._on404 = (req,res) => {
+			res.send(`Cannot ${req.method} ${req.requestUrl.path}`);
+		}
 	}
 
 	/**
@@ -95,12 +102,13 @@ export class GhstApplication{
 		}
 
 		function walkDir(dir: string){
-			const entries = [];
+			let entries: string[] = [];
 			for(const entry of Deno.readDirSync(dir)){
 				if(entry.isFile){
 					entries.push(addPaths(dir,entry.name));
-				} else if(entry.isDirectory){
-					entries.concat(walkDir(addPaths(dir,entry.name)));
+				}
+				if(entry.isDirectory){
+					entries = entries.concat(walkDir(addPaths(dir,entry.name)));
 				}
 			}
 			return entries;
@@ -109,7 +117,7 @@ export class GhstApplication{
 		const entries = walkDir(path);
 
 		for(const entry of entries){
-			this.onRequest(entry,"GET",(_req,res) => {
+			this.onRequest(`/${entry}`,"GET",(_req,res) => {
 				res.sendFile(entry);
 			});
 		}
@@ -140,7 +148,7 @@ export class GhstApplication{
 
 				if(this._requests[path] && this._requests[path].method === requestEvent.request.method){
 					const req = new HTTPRequest(requestEvent,path,"?" + (query[1] || ""))
-					const res = new HTTPResponse();
+					const res = new HTTPResponse(requestEvent,path);
 
 					for(const middleware of this._middleware){
 						middleware(req,res);
@@ -155,8 +163,18 @@ export class GhstApplication{
 						})
 					);
 				} else{
+					const req = new HTTPRequest(requestEvent,path,"?" + (query[1] || ""))
+					const res = new HTTPResponse(requestEvent,path);
+
+					for(const middleware of this._middleware){
+						middleware(req,res);
+					}
+
+					this._on404(req,res);
+
 					requestEvent.respondWith(
-						new Response(`Cannot ${requestEvent.request.method} ${path}`,{
+						new Response(res.body,{
+							headers: res.headers,
 							status: 404
 						})
 					);

@@ -15,11 +15,15 @@ export class HTTPResponse{
 	 * Headers the response has.
 	 */
 	readonly headers: {[key: string]: string};
+	private _request: Deno.RequestEvent;
+	private _path: string;
 
-	constructor(){
+	constructor(req: Deno.RequestEvent,path: string){
 		this.body = "";
 		this.status = 200;
 		this.headers = {};
+		this._request = req;
+		this._path = path;
 	}
 
 	/**
@@ -41,8 +45,8 @@ export class HTTPResponse{
 		const findableContType = contTypeHeaders.includes(fileType);
 
 		if(!findableContType) throw new Error("Cannot find content type.");
-
-		const type = GhstApplication.ContentTypeHeaders[`.${path.split(".")[1]}`];
+		
+		const type = GhstApplication.ContentTypeHeaders[`.${path.split(".")[1]}`]
 	
 		const decoder = new TextDecoder();
 		const content = decoder.decode(Deno.readFileSync(path));
