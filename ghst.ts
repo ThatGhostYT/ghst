@@ -106,8 +106,7 @@ export class GhstApplication{
 			for(const entry of Deno.readDirSync(dir)){
 				if(entry.isFile){
 					entries.push(addPaths(dir,entry.name));
-				}
-				if(entry.isDirectory){
+				} else if(entry.isDirectory){
 					entries = entries.concat(walkDir(addPaths(dir,entry.name)));
 				}
 			}

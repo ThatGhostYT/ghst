@@ -1,10 +1,17 @@
 import {GhstApplication} from "./ghst.ts";
 
+type ResponseBody = Blob
+	| BufferSource
+	| FormData
+	| URLSearchParams
+	| ReadableStream<Uint8Array>
+	| string;
+
 export class HTTPResponse{
 	/**
 	 * The body of the response.
 	 */
-	public body: string;
+	public body: ResponseBody;
 
 	/**
 	 * Status code of the response.
@@ -30,7 +37,7 @@ export class HTTPResponse{
 	 * Updates the body of the response.
 	 * @param content The content the body will be updated to.
 	 */
-	public send(content: string){
+	public send(content: ResponseBody){
 		this.body = content;
 		return this;
 	}
@@ -50,6 +57,35 @@ export class HTTPResponse{
 	
 		const decoder = new TextDecoder();
 		const content = decoder.decode(Deno.readFileSync(path));
+
+		this.setHeader("Content-Type",type);
+		this.send(content);
+		return this;
+	}
+
+	/**
+	 * Reads a file and replaces text with specified values.
+	 * @param path The path of the file.
+	 * @param values The values to replace text with.
+	 */
+	public render(path: string,values: {[key: string]: string}){
+		const contTypeHeaders = Object.keys(GhstApplication.ContentTypeHeaders);
+		const fileType = `.${path.replace(/\.\//,"").split(".")[1]}`;
+		const findableContType = contTypeHeaders.includes(fileType);
+
+		if(!findableContType) throw new Error("Cannot find content type.");
+		
+		const type = GhstApplication.ContentTypeHeaders[`.${path.split(".")[1]}`]
+
+		const decoder = new TextDecoder();
+		let content = decoder.decode(Deno.readFileSync(path));
+
+		for(const value of Object.keys(values)){
+			content = content.replace(
+				new RegExp(`{{\\s*${value.toUpperCase()}\\s*}}`,"g"),
+				values[value]
+			);
+		}
 
 		this.setHeader("Content-Type",type);
 		this.send(content);
