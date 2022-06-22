@@ -22,15 +22,11 @@ export class HTTPResponse{
 	 * Headers the response has.
 	 */
 	readonly headers: {[key: string]: string};
-	private _request: Deno.RequestEvent;
-	private _path: string;
 
-	constructor(req: Deno.RequestEvent,path: string){
+	constructor(){
 		this.body = "";
 		this.status = 200;
 		this.headers = {};
-		this._request = req;
-		this._path = path;
 	}
 
 	/**

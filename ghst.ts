@@ -147,7 +147,7 @@ export class GhstApplication{
 
 				if(this._requests[path] && this._requests[path].method === requestEvent.request.method){
 					const req = new HTTPRequest(requestEvent,path,"?" + (query[1] || ""))
-					const res = new HTTPResponse(requestEvent,path);
+					const res = new HTTPResponse();
 
 					for(const middleware of this._middleware){
 						middleware(req,res);
@@ -163,7 +163,7 @@ export class GhstApplication{
 					);
 				} else{
 					const req = new HTTPRequest(requestEvent,path,"?" + (query[1] || ""))
-					const res = new HTTPResponse(requestEvent,path);
+					const res = new HTTPResponse();
 
 					for(const middleware of this._middleware){
 						middleware(req,res);
