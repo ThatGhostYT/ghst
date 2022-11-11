@@ -11,8 +11,10 @@ type Methods = "GET"
 	| "TRACE"
 	| "PATCH";
 
+type MiddlewareFunc = (arg0: HTTPRequest,arg1: HTTPResponse,arg2: (arg0: Record<string,unknown>) => void) => void
+
 interface MiddlewareOptions{
-	middleware: ((arg0: HTTPRequest,arg1: HTTPResponse) => void)[];
+	middleware: MiddlewareFunc[];
 }
 
 interface Req{
@@ -22,14 +24,15 @@ interface Req{
 
 export class GhstApplication{
 	private _requests: {[key: string]: Req};
-	private _middleware: ((arg0: HTTPRequest,arg1: HTTPResponse) => void)[];
+	private _middleware: MiddlewareFunc[];
 	private _on404: (arg0: HTTPRequest,arg1: HTTPResponse) => void;
+	private _plugins: Record<string,unknown>;
 
 	/**
 	 * @param options Used to add middleware to your ghst application.
 	 * @param on404 A request callback for when a request tries to access content that does not exist on your web app. Any response status code will be replaced with 404.
 	 */
-	constructor(options?: MiddlewareOptions,on404?: (arg0: HTTPRequest,arg1: HTTPResponse) => void){
+	constructor(options?: MiddlewareOptions,on404?: (arg0: HTTPRequest<GhstApplication["_plugins"]>,arg1: HTTPResponse) => void){
 		this._requests = {};
 
 		if(options) this._middleware = options.middleware;
@@ -39,6 +42,8 @@ export class GhstApplication{
 		else this._on404 = (req,res) => {
 			res.send(`Cannot ${req.method} ${req.requestUrl.path}`);
 		}
+
+		this._plugins = {};
 	}
 
 	/**
@@ -47,7 +52,7 @@ export class GhstApplication{
 	 * @param method The method of the request.
 	 * @param callback The callback for when the request is requested.
 	 */
-	public onRequest(path: string,method: Methods,callback: (arg0: HTTPRequest,arg1: HTTPResponse) => void){
+	public onRequest(path: string,method: Methods,callback: (arg0: HTTPRequest<typeof this._plugins>,arg1: HTTPResponse) => void){
 		this._requests[path] = {
 			method,
 			callback
@@ -127,9 +132,10 @@ export class GhstApplication{
 	 * @param port Port to host your web app on.
 	 * @param callback Optional callback for when your web app starts listening for requests.
 	 */
-	public async listen(port: number,callback?: () => void){
+	public async listen(port: number,hostname?: string,callback?: () => void){
 		const server = Deno.listen({
-			port
+			port,
+			hostname
 		});
 
 		if(callback) callback();
@@ -145,12 +151,22 @@ export class GhstApplication{
 				const query = path.split("?");
 				path = query[0];
 
+				// deno-lint-ignore no-this-alias
+				const self = this;
+
+				// deno-lint-ignore no-inner-declarations
+				function updatePluginsObj<T>(obj: Record<string,T>){
+					for(const key of Object.keys(obj)){
+						self._plugins[key] = obj[key];
+					}
+				}
+
 				if(this._requests[path] && this._requests[path].method === requestEvent.request.method){
-					const req = new HTTPRequest(requestEvent,path,"?" + (query[1] || ""))
+					const req = new HTTPRequest<typeof this._plugins>(requestEvent,path,"?" + (query[1] || ""),this._plugins);
 					const res = new HTTPResponse();
 
 					for(const middleware of this._middleware){
-						middleware(req,res);
+						middleware(req,res,updatePluginsObj);
 					}
 
 					this._requests[path].callback(req,res);
@@ -162,11 +178,11 @@ export class GhstApplication{
 						})
 					);
 				} else{
-					const req = new HTTPRequest(requestEvent,path,"?" + (query[1] || ""))
+					const req = new HTTPRequest<typeof this._plugins>(requestEvent,path,"?" + (query[1] || ""),this._plugins);
 					const res = new HTTPResponse();
 
 					for(const middleware of this._middleware){
-						middleware(req,res);
+						middleware(req,res,updatePluginsObj);
 					}
 
 					this._on404(req,res);

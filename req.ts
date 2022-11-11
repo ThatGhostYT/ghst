@@ -9,7 +9,7 @@ interface Url{
     toString(): string;
 }
 
-export class HTTPRequest{
+export class HTTPRequest<T extends Record<string,unknown> =Record<never,never>>{
     /**
      * Path of the request.
      * @deprecated
@@ -38,8 +38,10 @@ export class HTTPRequest{
      */
     readonly method: string;
     private _request: Deno.RequestEvent;
+
+    [key: string]: unknown;
     
-    constructor(req: Deno.RequestEvent,path: string,query: string){
+    constructor(req: Deno.RequestEvent,path: string,query: string,plugins?: T){
         this._request = req;
         this.path = path;
         
@@ -72,5 +74,15 @@ export class HTTPRequest{
             }
         }
         this.method = this._request.request.method;
+
+        if(plugins){
+            for(const key of Object.keys(plugins)){
+                this[key] = plugins[key];
+            }
+        }
+    }
+
+    public has(propertyName: string){
+        return propertyName in this;
     }
 }

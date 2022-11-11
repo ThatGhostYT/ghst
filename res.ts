@@ -39,6 +39,15 @@ export class HTTPResponse{
 	}
 
 	/**
+	 * Responds to the request with a JSON object.
+	 * @param content JSON object to respond with.
+	 */
+	public json(content: {[key: string]: unknown} | unknown[]){
+		this.body = JSON.stringify(content);	
+		return this;
+	}
+
+	/**
 	 * Sets the body of the response to be the contents of a file.
 	 * @param path The file you want to show in the body of the response.
 	 */
@@ -60,9 +69,10 @@ export class HTTPResponse{
 	}
 
 	/**
-	 * Reads a file and replaces text with specified values.
+	 * Reads a file and replaces text with specified values. Would be better to use a middleware for rendering instead.
 	 * @param path The path of the file.
 	 * @param values The values to replace text with.
+	 * @deprecated
 	 */
 	public render(path: string,values: {[key: string]: string}){
 		const contTypeHeaders = Object.keys(GhstApplication.ContentTypeHeaders);
