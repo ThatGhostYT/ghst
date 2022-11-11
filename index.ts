@@ -1,4 +1,4 @@
-import GhstApplication from "./mod.ts";
+import {GhstApplication} from "./mod.ts";
 
 const ghst = new GhstApplication({
     middleware: [
