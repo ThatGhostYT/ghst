@@ -9,7 +9,7 @@ interface Url{
     toString(): string;
 }
 
-export class HTTPRequest<T extends Record<string,unknown> =Record<never,never>>{
+export class HTTPRequest{
     /**
      * Path of the request.
      * @deprecated
@@ -37,11 +37,13 @@ export class HTTPRequest<T extends Record<string,unknown> =Record<never,never>>{
      * Method of the request.
      */
     readonly method: string;
+
+    readonly headers: Record<string,string>;
     private _request: Deno.RequestEvent;
 
     [key: string]: unknown;
     
-    constructor(req: Deno.RequestEvent,path: string,query: string,plugins?: T){
+    constructor(req: Deno.RequestEvent,path: string,query: string){
         this._request = req;
         this.path = path;
         
@@ -63,7 +65,7 @@ export class HTTPRequest<T extends Record<string,unknown> =Record<never,never>>{
             url: this._request.request.url,
             query: {
                 parsed,
-                queryString: query,
+                queryString: query.length > 0 ? "?" + query : "",
                 toString(){
                     return this.queryString;
                 }
@@ -74,14 +76,23 @@ export class HTTPRequest<T extends Record<string,unknown> =Record<never,never>>{
             }
         }
         this.method = this._request.request.method;
-
-        if(plugins){
-            for(const key of Object.keys(plugins)){
-                this[key] = plugins[key];
-            }
+        
+        this.headers = {};
+        for(const header of this._request.request.headers.entries()){
+            this.headers[header[0]] = header[1];
         }
     }
 
+    /**
+     * See whether an object is in this request object.
+     * @param propertyName Property to look for in the request object.
+     * @example
+     * const ghst = new GhstApplication();
+     * 
+     * ghst.onRequest("/","GET",(req,res) => {
+     *  res.json(req.has("requestUrl"));
+     * });
+     */
     public has(propertyName: string){
         return propertyName in this;
     }
