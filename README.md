@@ -59,18 +59,6 @@ use of sendFile().
                 middleware: [GhstApplication.Helmet()]
         });
 
-  static JSON(): MiddlewareFunc
-    Reads request body and parses it into a JSON value.
-
-    @example
-        const ghst = new GhstApplication({
-                middleware: [GhstApplication.JSON()]
-        });
-
-        ghst.onRequest("/","GET",(req,res) => {
-                res.json(req.body);
-        });
-
   setStatic(path: string)
     Sets the static directory to avoid content type errors.
 
@@ -97,10 +85,11 @@ use of sendFile().
 type Methods = "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "CONNECT" | "OPTIONS" | "TRACE" | "PATCH"
   Every request method that Ghst supports.
 
-type MiddlewareFunc = (arg0: HTTPRequest, arg1: HTTPResponse, arg2?: Deno.RequestEvent) => void  Type that describes a middleware function.
+type MiddlewareFunc = (arg0: HTTPRequest, arg1: HTTPResponse, arg2: Deno.RequestEvent) => void 
+  Type that describes a middleware function.
 
 type ResponseBody = Blob | BufferSource | FormData | URLSearchParams | ReadableStream<Uint8Array> | string
-  Every acceptable type that can be sent in the response body
+  Every acceptable type that can be sent in the response body.
 
 class HTTPRequest
 
@@ -122,6 +111,9 @@ class HTTPRequest
   readonly method: string
     Method of the request.
   readonly headers: Record<string, string>
+    Headers used in the request.
+  readonly body: string
+    The request body.
   [key: string]: unknown
   has(propertyName: string)
     See whether an object is in this request object.
@@ -136,29 +128,16 @@ class HTTPRequest
          res.json(req.has("requestUrl"));
         });
 
-class HTTPRequest
+  parseBody()
+    Attempts to parse the request body.
 
-  constructor(req: Deno.RequestEvent, path: string, query: string) 
-  readonly path: string
-    Path of the request.
+    @example
+        const ghst = new GhstApplication();
 
-    @deprecated
-  readonly query: string
-    Any querys used in the request.
-
-    @deprecated
-  readonly url: string
-    The url of the request.
-
-    @deprecated
-  readonly requestUrl: Url
-    Details about the request url.
-  readonly method: string
-    Method of the request.
-  readonly headers: Record<string, string>
-  [key: string]: unknown
-  has(propertyName: string)
-    See whether an object is in this request object.
+        ghst.onRequest("/","GET",(req,res) => {
+         const body = req.parseBody();
+         res.json(body);
+        });
 
 class HTTPResponse
 
@@ -167,7 +146,7 @@ class HTTPResponse
     The body of the response.
   status: number
     Status code of the response.
-  readonly headers: { [key: string]: string; }
+  readonly headers: Record<string, string>
     Headers the response has.
   send(content: ResponseBody)
     Updates the body of the response.
