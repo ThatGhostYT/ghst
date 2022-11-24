@@ -21,7 +21,7 @@ export class HTTPResponse{
 	/**
 	 * Headers the response has.
 	 */
-	readonly headers: {[key: string]: string};
+	readonly headers: Record<string,string>;
 	private _requestEvent: Deno.RequestEvent;
 	private _called: boolean;
 
