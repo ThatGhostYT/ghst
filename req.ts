@@ -38,7 +38,16 @@ export class HTTPRequest{
      */
     readonly method: string;
 
+    /**
+     * Headers used in the request.
+     */
     readonly headers: Record<string,string>;
+
+    /**
+     * The request body.
+     */
+    readonly body: string;
+
     private _request: Deno.RequestEvent;
 
     [key: string]: unknown;
@@ -81,6 +90,10 @@ export class HTTPRequest{
         for(const header of this._request.request.headers.entries()){
             this.headers[header[0]] = header[1];
         }
+
+        let v;
+        this._request.request.body?.getReader().read().then(({value}) => v = value);
+        this.body = new TextDecoder().decode(v);
     }
 
     /**
@@ -95,5 +108,26 @@ export class HTTPRequest{
      */
     public has(propertyName: string){
         return propertyName in this;
+    }
+
+    /**
+     * Attempts to parse the request body.
+     * @example
+     * const ghst = new GhstApplication();
+     * 
+     * ghst.onRequest("/","GET",(req,res) => {
+     *  const body = req.parseBody();
+     *  res.json(body);
+     * });
+     */
+    public parseBody(){
+        let value;
+        try {
+            value = JSON.parse(this.body);
+        } catch(e){
+            value = e;
+        }
+
+        return value;
     }
 }

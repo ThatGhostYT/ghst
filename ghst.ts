@@ -27,7 +27,7 @@ export type Methods = "GET"
 /**
  * Type that describes a middleware function.
  */
-export type MiddlewareFunc = (arg0: HTTPRequest,arg1: HTTPResponse,arg2?: Deno.RequestEvent) => void
+export type MiddlewareFunc = (arg0: HTTPRequest,arg1: HTTPResponse,arg2: Deno.RequestEvent) => void
 
 interface MiddlewareOptions{
 	/**
@@ -176,35 +176,6 @@ export class GhstApplication{
 	}
 
 	/**
-	 * Reads request body and parses it into a JSON value.
-	 * @example
-	 * const ghst = new GhstApplication({
-	 * 	middleware: [GhstApplication.JSON()]
-	 * });
-	 * 
-	 * ghst.onRequest("/","GET",(req,res) => {
-	 * 	res.json(req.body);
-	 * });
-	 */
-	public static JSON(): MiddlewareFunc{
-		return async (req,_res,request) => {
-			const v = new TextDecoder().decode(
-				await request?.request.body?.getReader().read().then(({value}) => value)
-			);
-
-			let value;
-
-			try{
-				value = JSON.parse(v);
-			} catch(e){
-				value = e;
-			}
-
-			req.body = value;
-		}
-	}
-
-	/**
 	 * Sets the static directory to avoid content type errors.
 	 * @param path Directory you want to be static.
 	 * @example
@@ -280,7 +251,7 @@ export class GhstApplication{
 					const res = new HTTPResponse(requestEvent);
 
 					for(const middleware of this._middleware){
-						middleware(req,res);
+						middleware(req,res,requestEvent);
 					}
 
 					this.on404(req,res);
